@@ -1,0 +1,8 @@
+secrets/
+.env
+__pycache__/
+*.pyc
+output/
+venv/
+reports/
+config.json
