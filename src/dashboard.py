@@ -338,69 +338,94 @@ st.caption("Análise técnica automatizada de riscos psicossociais conforme NR-1
 
 
 # =========================
-# Sidebar: Controle
+# Sidebar — SaaS Style
 # =========================
-st.sidebar.header("⚙️ Controle")
+
+st.sidebar.markdown("""
+<div style="padding-bottom:18px;">
+    <h2 style="margin-bottom:0;">📊 NR-1 Dashboard</h2>
+    <span style="font-size:12px; color:#9ca3af;">
+        Sistema Analítico • Riscos Psicossociais
+    </span>
+</div>
+""", unsafe_allow_html=True)
+
+# =========================
+# Seleção de ID
+# =========================
+
+st.sidebar.markdown("#### 📂 Coleta")
 
 processed_ids = list_ids_from_reports()
 sheet_ids = list_ids_from_sheets()
-
 all_ids = sorted(set(processed_ids + sheet_ids))
 
 selected_id = st.sidebar.selectbox(
-    "Selecione um ID da coleta (Sheets ou já processado)",
+    "ID disponível",
     [""] + all_ids,
-    index=0
-)
-
-
-st.sidebar.markdown("---")
-st.sidebar.subheader("🔄 Atualizar relatório (reprocessar ID)")
-st.sidebar.caption(
-    "Reprocessa a coleta e recria arquivos em reports/<ID>:\n"
-    "- report_premium.json\n"
-    "- report.txt\n"
-    "- prompt_ai.txt"
+    index=0,
+    help="Selecione um ID já processado ou disponível na planilha."
 )
 
 manual_id = st.sidebar.text_input(
-    "Ou digite o ID manualmente",
-    value=(selected_id or "")
+    "Inserir ID manualmente",
+    value=(selected_id or ""),
+    help="Use se desejar forçar um ID específico."
 ).strip()
 
 report_id = manual_id if manual_id else selected_id
 
-if st.sidebar.button("🔄 Atualizar relatório agora"):
+st.sidebar.markdown("<br>", unsafe_allow_html=True)
+
+# =========================
+# Reprocessamento
+# =========================
+
+st.sidebar.markdown("#### 🔄 Atualização")
+
+st.sidebar.caption(
+    "Reprocessa o ID selecionado e recria os arquivos técnicos."
+)
+
+if st.sidebar.button("Atualizar relatório", use_container_width=True):
+
     if not report_id:
         st.sidebar.error("Selecione ou digite um ID válido.")
     else:
-        st.sidebar.info(f"Atualizando relatório do ID: {report_id} ...")
-
-        with st.spinner("Processando pipeline (report_export.py)..."):
+        with st.spinner("Executando pipeline..."):
             result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "src.report_export",
-            "--id",
-            report_id
-        ],
-        capture_output=True,
-        text=True
-    )
-
+                [
+                    sys.executable,
+                    "-m",
+                    "src.report_export",
+                    "--id",
+                    report_id
+                ],
+                capture_output=True,
+                text=True
+            )
 
         if result.returncode != 0:
-            st.sidebar.error("❌ Erro ao atualizar relatório.")
+            st.sidebar.error("Erro no processamento.")
             if result.stderr:
                 st.sidebar.code(result.stderr)
-            if result.stdout:
-                st.sidebar.code(result.stdout)
         else:
-            st.sidebar.success("✅ Relatório atualizado com sucesso.")
-            if result.stdout:
-                st.sidebar.code(result.stdout)
+            st.sidebar.success("Atualização concluída.")
             st.rerun()
+
+st.sidebar.markdown("---")
+
+# =========================
+# Rodapé minimalista
+# =========================
+
+st.sidebar.caption(
+    "🔒 Modo leitura\n"
+    "⚙️ Reprocessamento por ID\n"
+    "📁 Relatórios rastreáveis"
+)
+
+
 
 # =========================
 # Main: carregar report
@@ -566,8 +591,8 @@ def build_executive_synthesis(diagnosis, results):
     return texts.get(level)
 
 
-with st.expander("🎯 Síntese Estratégica Executiva", expanded=False):
-    st.markdown("### 🧠 Síntese Estratégica")
+with st.expander("🎯 Síntese Estratégica", expanded=False):
+    st.markdown("### 🧠 Leitura Integrada de Exposição Organizacional")
     synthesis = build_executive_synthesis(diagnosis, results)
 
     if synthesis:
@@ -594,11 +619,11 @@ tab1, tab2, tab_funcionais, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(
     [
         "📌 Riscos (R)",
         "⚠️ Impactos (G)",
-        "🏛️ Maturidade Operacional / Estratégica",
         "📉 Indicadores Funcionais",
-        "💰 ROI",
+        "🏛️ Maturidade Operacional / Estratégica",
         "🧠 Cruzamentos",
         "🔥 Prioridades",
+        "💰 ROI",
         "⚖️ Jurídico",
         "📦 Downloads & IA"
     ]
@@ -714,6 +739,56 @@ with tab2:
         else:
             for i, t in enumerate(notes_filtered, 1):
                 st.write(f"{i}. {t}")
+
+
+# -------------------------
+# TAB: Indicadores Funcionais
+# -------------------------
+with tab_funcionais:
+
+    st.subheader("📊 Indicadores Funcionais de Risco")
+
+    indices = premium.get("indices", {})
+
+    INDICES_FUNCIONAIS_V1 = [
+    "RISCO_BURNOUT",
+    "RISCO_ABSENTEISMO",
+    "RISCO_PRESENTEISMO"
+    ]
+
+    indices_funcionais = {
+        k: v for k, v in indices.items()
+        if k in INDICES_FUNCIONAIS_V1
+    }
+
+    if not indices_funcionais:
+        st.info("Sem indicadores funcionais disponíveis.")
+    else:
+        for key, v in indices_funcionais.items():
+
+            score = v.get("score")
+            score_pct = f"{round(score, 1)}%" if score is not None else "—"
+            status = v.get("status", "SEM_DADOS")
+
+            col1, col2, col3 = st.columns([2, 1, 4])
+
+            with col1:
+                st.markdown(f"### {v.get('icon', '')} {v.get('name')}")
+
+            with col2:
+                st.metric(
+                    label="Status",
+                    value=status,
+                    delta=score_pct
+                )
+
+            with col3:
+                st.write(v.get("description", ""))
+
+            colored_progress(score, status)
+            st.markdown("---")
+
+
 
 # -------------------------
 # TAB 3: Maturidade
@@ -851,57 +926,9 @@ with tab3:
 
 
 # -------------------------
-# TAB: Indicadores Funcionais
+# TAB 6: ROI  (✅ ÚNICA PARTE ALTERADA)
 # -------------------------
-with tab_funcionais:
-
-    st.subheader("📊 Indicadores Funcionais de Risco")
-
-    indices = premium.get("indices", {})
-
-    INDICES_FUNCIONAIS_V1 = [
-    "RISCO_BURNOUT",
-    "RISCO_ABSENTEISMO",
-    "RISCO_PRESENTEISMO"
-    ]
-
-    indices_funcionais = {
-        k: v for k, v in indices.items()
-        if k in INDICES_FUNCIONAIS_V1
-    }
-
-    if not indices_funcionais:
-        st.info("Sem indicadores funcionais disponíveis.")
-    else:
-        for key, v in indices_funcionais.items():
-
-            score = v.get("score")
-            score_pct = f"{round(score, 1)}%" if score is not None else "—"
-            status = v.get("status", "SEM_DADOS")
-
-            col1, col2, col3 = st.columns([2, 1, 4])
-
-            with col1:
-                st.markdown(f"### {v.get('icon', '')} {v.get('name')}")
-
-            with col2:
-                st.metric(
-                    label="Status",
-                    value=status,
-                    delta=score_pct
-                )
-
-            with col3:
-                st.write(v.get("description", ""))
-
-            colored_progress(score, status)
-            st.markdown("---")
-
-
-# -------------------------
-# TAB 5: ROI  (✅ ÚNICA PARTE ALTERADA)
-# -------------------------
-with tab4:
+with tab6:
     st.subheader("💰 ROI (Produtividade — Estimativa Financeira)")
 
     if roi_calc is None:
@@ -969,7 +996,7 @@ with tab4:
             st.json(payroll_info)
 
 
-with tab5:
+with tab4:
 
     # ======================================================
     # 🔀 Cruzamento 1 — Risco × Maturidade Estratégica
@@ -1269,7 +1296,7 @@ with tab5:
                 """)
 
 
-with tab6:
+with tab5:
     st.subheader("🔥 Prioridades de Intervenção")
 
     prio = diagnosis.get("priority", "SEM_DADOS")
